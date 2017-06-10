@@ -1,0 +1,8 @@
+--- 
+- name: Create a started container
+  lxc_container:
+    name: test-container-started
+    container_log: true
+    template: centos
+    state: started
+    

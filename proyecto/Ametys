@@ -1,0 +1,11 @@
+---
+- hosts: matrix
+  tasks:
+  - name: Install Nginx
+    yum: pkg=httpd state=installed update_cache=true
+
+- hosts: matrix
+  tasks:
+  - name: Install php
+    yum: pkg=php state=installed update_cache=true
+

@@ -1,0 +1,275 @@
+﻿Preparación del host: -> (https://wiki.debian.org/LXC)
+-SE USA BACKPORTS-
+apt-get install -t jessie-backports  lxc libvirt0 linux-image-amd64
+apt install yum
+apt-get install libpam-cgroup libpam-cgfs bridge-utils
+apt-get install lxc libvirt0 libpam-cgroup libpam-cgfs bridge-utils
+
+Probamos que todo "funciona":
+lxc-checkconfig
+PROYECTO -> steven(DNS)
+
+
+lxc-create -n steven -t debian -- -r jessie
+lxc-create -n pearl -t centos
+
+Lo iniciamos y entramos con: -> (https://www.digitalocean.com/community/tutorials/getting-started-with-lxc-on-an-ubuntu-13-04-vps)
+lxc-start -n sandbox -F
+
+Ò
+lxc-start -n pearl -d
+lxc-console -n pearl
+
+Podemos cambiar la contraseña con:
+chroot /var/lib/lxc/pearl/rootfs passwd
+
+
+EJEMPLO de lxc-veth.conf:
+
+# Container with network virtualized using a pre-configured bridge named br0 and
+# veth pair virtual network devices
+lxc.utsname = beta
+lxc.network.type = veth
+lxc.network.flags = up
+lxc.network.link = br0
+lxc.network.hwaddr = 4a:49:43:49:79:bf
+lxc.network.ipv4 = 10.2.3.5/24
+lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------------------------------------------------------
+
+Crear un contenedor:
+lxc-create -n sandbox -t debian -- -r jessie
+
+Iniciar el contenedor:
+lxc-start -n sandbox -F
+
+
+CAmbiar la contraseña del root de un contenedor:
+chroot /var/lib/lxc/sandbox/rootfs passwd
+
+Ver las máquinas:
+lxc-ls
+
+
+REDES---EXPERIMENTAL!!
+
+lxc.network.type = veth
+lxc.network.link = br0
+lxc.network.name = eth0
+lxc.network.mtu = 1500
+lxc.network.flags = up
+lxc.network.ipv4 = 0.0.0.0/24
+lxc.network.hwaddr = 00:16:3e:xx:xx:xx
+
+lxc-device add 
+
+Crear volumenes qcow2:
+qemu-img create -f raw vol-vm-practica.img 2G
+
+Enganchar esos volúmenes a una máquina qemu:
+virsh attach-disk example-vm --source /var/lib/libvirt/images/example-vm-swap.img --target vdb --persistent
+
+
+
+
+
+
+
+Practica.fase1
+
+Creación del contenedor:
+lxc-create -n maquinaorigen -t debian -- -r jessie
+
+interfaces:
+ brctl addbr br0
+ brctl addif br0 eth0
+ dhclient -v br0
+ brctl addbr br1
+ ip tuntap add mode tap user usuario
+ ip tuntap add mode tap user usuario
+ MAC0=$(echo "02:"`openssl rand -hex 5 | sed 's/\(..\)/\1:/g; s/.$//'`)
+ MAC1=$(echo "02:"`openssl rand -hex 5 | sed 's/\(..\)/\1:/g; s/.$//'`)
+ brctl addif br0 tap0
+ brctl addif br0 tap1
+ ip l set dev tap0 up
+ ip l set dev tap1 up
+ ip l set br1 up
+ ip a add 10.0.0.1/24 dev br1
+
+ echo 1 > /proc/sys/net/ipv4/ip_forward
+
+
+Añadimos la interfaz de red al contenedor:
+ Editamos el siguiente fichero:
+ nano /var/lib/lxc/maquinaorigen/config
+
+Añadimos las siguientes líneas:
+lxc.network.type = veth
+lxc.network.link = br1
+
+lxc.network.name = eth0
+lxc.network.mtu = 1500
+lxc.network.flags = up
+
+lxc.network.ipv4 = 10.0.0.10/24
+
+lxc.network.ipv4.gateway = auto
+lxc.network.hwaddr = 00:16:3e:xx:xx:xx
+
+Iniciamos la máquina :
+ lxc-start -n maquinaorigen -F 
+
+Add devices:
+ lxc-device -n maquinaorigen add tap0 eth0
+
+PAquete  de ping :apt install iputils-ping
+
+
+iptables:
+
+iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o br0 -j SNAT --to 192.168.122.141 
+
+
+Configuración del volumen:
+
+Montamos el volumen:
+ lxc-device -n maquinaorigen add /dev/postgre/bd
+ 
+Entramos en la máquina con:
+ lxc-start -n maquinaorigen -F
+
+Creación del volumen:
+ qemu-img create -f raw vol-vm-practica.img 2G
+ qemu-img create -f qcow2 vol-vm-practica.qcow2 2G
+
+Añadimos el volumen:
+ lxc-device -n maquinaorigen add /dev/postgre/bd
+ 
+lo preparamos:
+ mkfs.ext4 /dev/postgre/bd
+ mount /dev/postgre/bd /mnt
+Instalamos postgreSQL:
+ Aptitude update
+ Aptitude Install posgresql
+Configuramos postgres
+Copiamos la bd:
+cp -Ra /var/lib/postgresql/ /mnt/
+
+/etc/init.d/postgresql stop
+chown -R postgres:postgres /mnt
+su - postgres
+cd /var/lib/postgresql/
+cp -R 9.4/ /mnt/
+
+ nano /etc/postgresql/9.4/main/postgresql.conf
+
+Buscamos el párrafo "FILE LOCATIONS" y modificamos la línea data_directory ="/mnt/9.4/".
+
+Reiniciamos el servicio:
+ /etc/init.d/postgresql restart
+
+Preparamos para que postgres se pueda usar en remoto:
+
+-------------------------------------------------------------------------------
+
+Vamos al fichero " /etc/postgresql/9.1/main/postgresql.conf "
+nano /etc/postgresql/9.4/main/postgresql.conf 
+
+Buscamos "listen_addresses" (si usas nano puedes usar "CONTROL+w" para buscar) ,el valor de esta variable debe quedar así:
+
+listen_addresses='IP de salida de la máquina'
+
+También descomentamos la línea:
+password_encryption = on
+
+Añadimos la siguiente línea al final del fichero /etc/postgresql/9.1/main/pg_hba.conf:
+host all all 0.0.0.0 0.0.0.0 password
+
+
+Le damos permiso al usuario para conectarse: grant CONNECT on database cluster  to usuario;
+-------------------------------------------------------------------------------
+
+Ahora instalamos el cliente :
+ aptitude install postgresql-client
+
+
+
+Practica.fase2
+
+Arrancamos la máquina conectada a la interfaz:
+kvm -m 512 -hda jessie-nonfree.qcow2 \
+-device virtio-net,netdev=n0,mac=$MAC0 \
+-netdev tap,id=n0,ifname=tap0,script=no,downscript=no 
+
+Instalamos postgres y le damos la misma configuración que en el contenedor.
+
+
+
+iptables -t nat -A PREROUTING -p tcp --dport 5432 -j DNAT --to-destination 10.0.0.10:5432
+
+
+
+
+SCRIPT:
+
+Para que funcione el script se tiene que haber puesto la clave pública del anfitrión en los know_host de las dos máquinas virtuales ya que el script ejecuta comandos en remoto.
+----------------------------
+#!/bin/bash
+
+#Parámetros :
+morigen= maquinaorigen
+mdestino= generic-3  #Podemos saber el nombre de esta máquina usando "virsh list"
+ipmorigen= 10.0.0.10
+ipmdestino= 10.0.0.11
+
+
+ssh usuario@ipmorigen /etc/init.d/postgres stop
+ssh usuario@iplxc umount /dev/postgre/bd
+attach-device maquina /device
+
+
+
+
+
+
+
+

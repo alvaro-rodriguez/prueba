@@ -1,0 +1,10 @@
+---
+- hosts: ubuntu
+  remote_user: root
+  tasks:
+  - copy:
+      src: /etc/ansible/piedra
+      dest: /root/
+      owner: root
+      group: root
+      mode: "u=rw,g=r,o=r"

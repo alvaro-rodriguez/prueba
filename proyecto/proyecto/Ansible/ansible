@@ -1,0 +1,18 @@
+[ping]
+ansible matrix -m ping -k -u usuario
+[install manuality]
+ansible matrix -m apt -k -u root -a "name=apache2 update_cache=yes state=latest"
+
+
+[links]
+http://docs.ansible.com/ansible/lxc_container_module.html
+
+ejemplo playbook (nginx.yml):
+---
+- hosts: localhost
+  tasks:
+  - name: Install Nginx
+    apt: pkg=nginx state=installed update_cache=true
+
+Lo lanzamos con:
+ansible-playbook -s nginx.yml -k -u usuario
